@@ -12,6 +12,11 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.WritableMap;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.Map;
 
 public class AlipayModule extends ReactContextBaseJavaModule {
@@ -47,9 +52,24 @@ public class AlipayModule extends ReactContextBaseJavaModule {
     Runnable runnable = new Runnable() {
       @Override
       public void run() {
-        PayTask payTask = new PayTask(getCurrentActivity());
-        Map<String, String> map = payTask.payV2(orderInfo, true);
-        promise.resolve(getWritableMap(map));
+        try {
+          JSONObject jsonObject = new JSONObject(orderInfo);
+          String sign = jsonObject.getString("sign");
+          sign = URLEncoder.encode(sign, "UTF-8");
+          // 完整的符合支付宝参数规范的订单信息
+          final String payInfo = jsonObject.getString("order_info")
+                  + "&sign=\""
+                  + sign
+                  + "\"&"
+                  + "sign_type=\""
+                  + jsonObject.getString("sign_type")
+                  + "\"";
+          PayTask payTask = new PayTask(getCurrentActivity());
+          Map<String, String> map = payTask.payV2(payInfo, true);
+          promise.resolve(getWritableMap(map));
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
       }
     };
     Thread thread = new Thread(runnable);
